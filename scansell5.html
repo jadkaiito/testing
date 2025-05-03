@@ -1,0 +1,2704 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ScanSell | POS System</title>
+<script src="https://cdn.tailwindcss.com">
+function highlightActiveMobileNav(page) {
+  ['dashboard', 'inventory', 'sales', 'profile', 'settings'].forEach(id => {
+    const el = document.getElementById(id + '-nav-mobile');
+    if (el) {
+      el.classList.remove('text-indigo-600');
+      el.classList.add('text-gray-500');
+    }
+  });
+  const activeEl = document.getElementById(page + '-nav-mobile');
+  if (activeEl) {
+    activeEl.classList.remove('text-gray-500');
+    activeEl.classList.add('text-indigo-600');
+  }
+}
+
+const originalShowPage = showPage;
+showPage = function(page) {
+  originalShowPage(page);
+  highlightActiveMobileNav(page);
+};
+
+editFormElement.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const id = parseInt(document.getElementById('edit-product-id').value);
+    const name = document.getElementById('edit-product-name').value;
+    const price = parseFloat(document.getElementById('edit-product-price').value);
+    const quantity = parseInt(document.getElementById('edit-product-quantity').value);
+    const barcode = document.getElementById('edit-product-barcode').value;
+    const min = parseInt(document.getElementById('edit-product-min').value);
+    const max = parseInt(document.getElementById('edit-product-max').value);
+    
+    if (name && !isNaN(price) && !isNaN(quantity)) {
+        const productIndex = inventory.findIndex(item => item.id === id);
+        
+        if (productIndex !== -1) {
+            inventory[productIndex] = {
+                ...inventory[productIndex],
+                name: name,
+                price: price,
+                quantity: quantity,
+                barcode: barcode || null,
+                min: isNaN(min) ? null : min,
+                max: isNaN(max) ? null : max
+            };
+            
+            showNotification(`Updated ${name}`);
+            if (typeof updateInventoryDisplay === 'function') updateInventoryDisplay();
+            updateTotalItemsCount(); 
+            updateInventoryValue(); 
+            updateLowStockCount(); 
+            updateOutOfStockCount();
+            
+            console.log("Hiding edit form now...");
+            editForm.classList.add('hidden');
+        }
+    }
+});
+
+
+function updateOutOfStockCount() {
+    const outOfStockCount = inventory.filter(item => item.quantity === 0).length;
+    const outOfStockElement = document.getElementById('out-of-stock-count');
+    if (outOfStockElement) {
+        outOfStockElement.textContent = outOfStockCount;
+    }
+}
+
+
+function renderLowStockAlerts() {
+    const tbody = document.querySelector('#dashboard-page table tbody');
+    tbody.innerHTML = ''; // Clear existing rows
+
+    const alertItems = inventory.filter(item => {
+        return (item.min !== null && !isNaN(item.min) && item.quantity < item.min) || item.quantity === 0;
+    });
+
+    alertItems.forEach(item => {
+        const status = item.quantity === 0 ? 'Out of Stock' : 'Low';
+        const statusClass = item.quantity === 0 ? 'status-out' : 'status-low';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10">
+                        <img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">${item.name}</div>
+                        <div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#${item.barcode}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">${item.quantity}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full ${statusClass}">
+                    ${status}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">
+                <button class="text-indigo-600 hover:text-indigo-900 mr-3 w-full mb-2 md:w-auto">Reorder</button>
+                <button class="text-gray-600 hover:text-gray-900 w-full mb-2 md:w-auto">View</button>
+            </td>
+            <td class="px-2 py-2 text-sm text-gray-700 text-center">${item.min ?? '—'}</td>
+            <td class="px-2 py-2 text-sm text-gray-700 text-center">${item.max ?? '—'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+
+function init() {
+    showPage('dashboard'); // Show dashboard first
+    renderLowStockAlerts();
+    updateInventoryDisplay();
+    updateTotalItemsCount();
+    updateInventoryValue();
+    updateLowStockCount();
+    updateOutOfStockCount();
+    if (typeof updateCartDisplay === 'function') updateCartDisplay();
+}
+window.onload = init;
+
+</script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js">
+editFormElement.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const id = parseInt(document.getElementById('edit-product-id').value);
+    const name = document.getElementById('edit-product-name').value;
+    const price = parseFloat(document.getElementById('edit-product-price').value);
+    const quantity = parseInt(document.getElementById('edit-product-quantity').value);
+    const barcode = document.getElementById('edit-product-barcode').value;
+    const min = parseInt(document.getElementById('edit-product-min').value);
+    const max = parseInt(document.getElementById('edit-product-max').value);
+    
+    if (name && !isNaN(price) && !isNaN(quantity)) {
+        const productIndex = inventory.findIndex(item => item.id === id);
+        
+        if (productIndex !== -1) {
+            inventory[productIndex] = {
+                ...inventory[productIndex],
+                name: name,
+                price: price,
+                quantity: quantity,
+                barcode: barcode || null,
+                min: isNaN(min) ? null : min,
+                max: isNaN(max) ? null : max
+            };
+            
+            showNotification(`Updated ${name}`);
+            if (typeof updateInventoryDisplay === 'function') updateInventoryDisplay();
+            updateTotalItemsCount(); 
+            updateInventoryValue(); 
+            updateLowStockCount(); 
+            updateOutOfStockCount();
+            
+            console.log("Hiding edit form now...");
+            editForm.classList.add('hidden');
+        }
+    }
+});
+
+
+function updateOutOfStockCount() {
+    const outOfStockCount = inventory.filter(item => item.quantity === 0).length;
+    const outOfStockElement = document.getElementById('out-of-stock-count');
+    if (outOfStockElement) {
+        outOfStockElement.textContent = outOfStockCount;
+    }
+}
+
+
+function renderLowStockAlerts() {
+    const tbody = document.querySelector('#dashboard-page table tbody');
+    tbody.innerHTML = ''; // Clear existing rows
+
+    const alertItems = inventory.filter(item => {
+        return (item.min !== null && !isNaN(item.min) && item.quantity < item.min) || item.quantity === 0;
+    });
+
+    alertItems.forEach(item => {
+        const status = item.quantity === 0 ? 'Out of Stock' : 'Low';
+        const statusClass = item.quantity === 0 ? 'status-out' : 'status-low';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10">
+                        <img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">${item.name}</div>
+                        <div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#${item.barcode}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">${item.quantity}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full ${statusClass}">
+                    ${status}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">
+                <button class="text-indigo-600 hover:text-indigo-900 mr-3 w-full mb-2 md:w-auto">Reorder</button>
+                <button class="text-gray-600 hover:text-gray-900 w-full mb-2 md:w-auto">View</button>
+            </td>
+            <td class="px-2 py-2 text-sm text-gray-700 text-center">${item.min ?? '—'}</td>
+            <td class="px-2 py-2 text-sm text-gray-700 text-center">${item.max ?? '—'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+
+function init() {
+    showPage('dashboard'); // Show dashboard first
+    renderLowStockAlerts();
+    updateInventoryDisplay();
+    updateTotalItemsCount();
+    updateInventoryValue();
+    updateLowStockCount();
+    updateOutOfStockCount();
+    if (typeof updateCartDisplay === 'function') updateCartDisplay();
+}
+window.onload = init;
+
+</script>
+<style>
+
+.edit-btn, .delete-btn {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+.edit-btn, .delete-btn {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+.action-btn.edit-btn, 
+.action-btn.delete-btn {
+  display: inline-block;
+  margin: 2px;
+  padding: 6px 10px;
+}
+.action-menu {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: row;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.action-menu.active {
+  display: flex;
+}
+.action-btn {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #4f46e5 0%, #10b981 100%);
+        }
+        
+        #scanner-container {
+            width: 100%;
+            height: 300px;
+            background-color: #f3f4f6;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #scanner-viewfinder {
+            position: absolute;
+            width: 80%;
+            height: 200px;
+            border: 3px dashed #4f46e5;
+            border-radius: 8px;
+        }
+        
+        .scan-line {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: rgba(79, 70, 229, 0.5);
+            animation: scanLine 2s linear infinite;
+        }
+        
+        @keyframes scanLine {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        
+        .tab {
+            display: none;
+        }
+        
+        .tab.active {
+            display: block;
+        }
+        
+        .tab-button {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6b7280;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .tab-button.active {
+            color: #4f46e5;
+            border-bottom-color: #4f46e5;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 20px;
+        }
+        
+        .inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .inventory-table th, .inventory-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .inventory-table th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .inventory-table tr:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .action-btn {
+            padding: 6px 10px;
+            border-radius: 4px;
+            margin: 0 2px;
+            cursor: pointer;
+        }
+        
+        .edit-btn {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .edit-btn:hover {
+            background-color: #2563eb;
+        }
+        
+        .delete-btn {
+            background-color: #ef4444;
+            color: white;
+        }
+        
+        .delete-btn:hover {
+            background-color: #dc2626;
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .cart-item {
+            transition: all 0.2s ease;
+        }
+        
+        .cart-item:hover {
+            background-color: #f8fafc;
+        }
+        
+        .quantity-input {
+            width: 60px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 4px;
+        }
+        
+        #receipt-container {
+            max-width: 400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        #qr-code-container {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+    
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+                0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+</style>
+</head>
+<body class="bg-gray-50">
+<!-- Navigation -->
+<nav class="bg-white shadow-sm hidden md:block">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between h-16">
+<div class="flex items-center">
+<div class="flex-shrink-0 flex items-center">
+<i class="fas fa-barcode text-indigo-600 text-[clamp(1.5rem,3vw,1.875rem)] mr-2"></i>
+<span class="text-[clamp(1.25rem,2.5vw,1.5rem)] font-bold text-gray-900">ScanSell</span>
+</div>
+</div>
+<div class="hidden md:ml-6 md:flex md:items-center md:space-x-8">
+<a class="text-gray-500 hover:text-gray-700 px-3 py-2 text-[clamp(0.875rem,1.2vw,1rem)] font-medium border-b-2 border-transparent" href="#" id="dashboard-nav">Dashboard</a>
+<a class="text-gray-500 hover:text-gray-700 px-3 py-2 text-[clamp(0.875rem,1.2vw,1rem)] font-medium border-b-2 border-transparent" href="#" id="inventory-nav">Inventory</a>
+<a class="text-gray-500 hover:text-gray-700 px-3 py-2 text-[clamp(0.875rem,1.2vw,1rem)] font-medium border-b-2 border-transparent" href="#" id="sales-nav">Sales</a>
+<a class="text-gray-500 hover:text-gray-700 px-3 py-2 text-[clamp(0.875rem,1.2vw,1rem)] font-medium" href="#">History</a>
+</div>
+<div class="flex items-center">
+<div class="relative">
+<button class="flex items-center text-gray-500 hover:text-gray-700 w-full mb-2 md:w-auto">
+<i class="fas fa-user-circle text-[clamp(1.5rem,3vw,1.875rem)]"></i>
+</button>
+</div>
+</div>
+</div>
+</div>
+</nav>
+<!-- Inventory Page -->
+<div class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24" id="dashboard-page">
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+<!-- Total Items Card -->
+<div class="bg-white overflow-hidden shadow rounded-lg card-hover transition-all duration-300">
+<div class="px-4 py-5 sm:p-6">
+<div class="flex items-center">
+<div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+<i class="fas fa-boxes text-white text-[clamp(1.25rem,2.5vw,1.5rem)]"></i>
+</div>
+<div class="ml-5 w-0 flex-1">
+<dt class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-500 truncate">
+                                Total Items
+                            </dt>
+<dd class="flex items-baseline">
+<div class="text-[clamp(1.5rem,3vw,1.875rem)] font-semibold text-gray-900">
+                                    <span id="total-items-count">0</span>
+                                </div>
+</dd>
+</div>
+</div>
+</div>
+</div>
+<!-- Inventory Value Card -->
+<div class="bg-white overflow-hidden shadow rounded-lg card-hover transition-all duration-300">
+<div class="px-4 py-5 sm:p-6">
+<div class="flex items-center">
+<div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+<i class="fas fa-dollar-sign text-white text-[clamp(1.25rem,2.5vw,1.5rem)]"></i>
+</div>
+<div class="ml-5 w-0 flex-1">
+<dt class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-500 truncate">
+                                Inventory Value
+                            </dt>
+<dd class="flex items-baseline">
+<div class="text-[clamp(1.5rem,3vw,1.875rem)] font-semibold text-gray-900">
+                                    <span id="inventory-value">$0.00</span>
+                                </div>
+</dd>
+</div>
+</div>
+</div>
+</div>
+<!-- Low Stock Card -->
+<div class="bg-white overflow-hidden shadow rounded-lg card-hover transition-all duration-300">
+<div class="px-4 py-5 sm:p-6">
+<div class="flex items-center">
+<div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
+<i class="fas fa-exclamation-triangle text-white text-[clamp(1.25rem,2.5vw,1.5rem)]"></i>
+</div>
+<div class="ml-5 w-0 flex-1">
+<dt class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-500 truncate">
+                                Low Stock Items
+                            </dt>
+<dd class="flex items-baseline">
+<div class="text-[clamp(1.5rem,3vw,1.875rem)] font-semibold text-gray-900">
+                                    <span id="low-stock-count">0</span>
+                                </div>
+</dd>
+</div>
+</div>
+</div>
+</div>
+<!-- Out of Stock Card -->
+<div class="bg-white overflow-hidden shadow rounded-lg card-hover transition-all duration-300">
+<div class="px-4 py-5 sm:p-6">
+<div class="flex items-center">
+<div class="flex-shrink-0 bg-red-500 rounded-md p-3">
+<i class="fas fa-times-circle text-white text-[clamp(1.25rem,2.5vw,1.5rem)]"></i>
+</div>
+<div class="ml-5 w-0 flex-1">
+<dt class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-500 truncate">
+                                Out of Stock
+                            </dt>
+<dd class="flex items-baseline">
+<div class="text-[clamp(1.5rem,3vw,1.875rem)] font-semibold text-gray-900">
+                                    <span id="out-of-stock-count">0</span>
+                                </div>
+</dd>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Low Stock Alerts Section -->
+<div class="bg-white shadow rounded-lg mb-8">
+<div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+<h3 class="text-[clamp(1.125rem,2vw,1.25rem)] leading-6 font-medium text-gray-900">
+<i class="fas fa-exclamation-circle text-yellow-500 mr-2"></i>
+                    Low Stock Alerts
+                </h3>
+<p class="mt-1 text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">
+                    Products that need your attention
+                </p>
+</div>
+<div class="px-4 py-5 sm:p-6">
+<div class="overflow-x-auto overflow-x-auto">
+<table class="min-w-full divide-y divide-gray-200">
+<thead class="bg-gray-50">
+<tr>
+<th class="px-6 py-3 text-left text-[clamp(0.75rem,1vw,0.875rem)] font-medium text-gray-500 uppercase tracking-wider" scope="col">
+                                    Product Name
+                                </th>
+<th class="px-6 py-3 text-left text-[clamp(0.75rem,1vw,0.875rem)] font-medium text-gray-500 uppercase tracking-wider" scope="col">
+                                    Quantity Remaining
+                                </th>
+<th class="px-6 py-3 text-left text-[clamp(0.75rem,1vw,0.875rem)] font-medium text-gray-500 uppercase tracking-wider" scope="col">
+                                    Status
+                                </th>
+<th class="px-6 py-3 text-left text-[clamp(0.75rem,1vw,0.875rem)] font-medium text-gray-500 uppercase tracking-wider" scope="col">
+                                    Action
+                                </th>
+<th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min Quantity</th><th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Max Quantity</th></tr>
+</thead>
+<tbody class="bg-white divide-y divide-gray-200">
+<!-- Low Stock Item 1 -->
+<tr>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="flex items-center">
+<div class="flex-shrink-0 h-10 w-10">
+<img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+</div>
+<div class="ml-4">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">Organic Almond Milk</div>
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#ALM-4732</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">4</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full status-low">
+                                        Low
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">
+<button class="text-indigo-600 hover:text-indigo-900 mr-3 w-full mb-2 md:w-auto">Reorder</button>
+<button class="text-gray-600 hover:text-gray-900 w-full mb-2 md:w-auto">View</button>
+</td>
+</tr>
+<!-- Low Stock Item 2 -->
+<tr>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="flex items-center">
+<div class="flex-shrink-0 h-10 w-10">
+<img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+</div>
+<div class="ml-4">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">Free Range Eggs (Dozen)</div>
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#EGG-1289</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">2</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full status-critical">
+                                        Critical
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">
+<button class="text-indigo-600 hover:text-indigo-900 mr-3 w-full mb-2 md:w-auto">Reorder</button>
+<button class="text-gray-600 hover:text-gray-900 w-full mb-2 md:w-auto">View</button>
+</td>
+</tr>
+<!-- Out of Stock Item -->
+<tr>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="flex items-center">
+<div class="flex-shrink-0 h-10 w-10">
+<img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+</div>
+<div class="ml-4">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">Organic Blueberries</div>
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#BLB-5621</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">0</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full status-out">
+                                        Out of Stock
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">
+<button class="text-indigo-600 hover:text-indigo-900 mr-3 w-full mb-2 md:w-auto">Reorder</button>
+<button class="text-gray-600 hover:text-gray-900 w-full mb-2 md:w-auto">View</button>
+</td>
+</tr>
+<!-- Low Stock Item 3 -->
+<tr>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="flex items-center">
+<div class="flex-shrink-0 h-10 w-10">
+<img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+</div>
+<div class="ml-4">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">Whole Wheat Bread</div>
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#BRD-3345</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">3</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full status-low">
+                                        Low
+                                    </span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">
+<button class="text-indigo-600 hover:text-indigo-900 mr-3 w-full mb-2 md:w-auto">Reorder</button>
+<button class="text-gray-600 hover:text-gray-900 w-full mb-2 md:w-auto">View</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+<button class="inline-flex items-center px-4 py-2 border border-transparent text-[clamp(0.875rem,1.2vw,1rem)] font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full mb-2 md:w-auto">
+                        View All Alerts
+                    </button>
+</div>
+</div>
+</div>
+<!-- Top Selling Products Section -->
+<div class="bg-white shadow rounded-lg">
+<div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+<h3 class="text-[clamp(1.125rem,2vw,1.25rem)] leading-6 font-medium text-gray-900">
+<i class="fas fa-chart-line text-blue-500 mr-2"></i>
+                    Top Selling Products
+                </h3>
+<p class="mt-1 text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">
+                    Your best performing products this month
+                </p>
+</div>
+<div class="px-4 py-5 sm:p-6">
+<div class="overflow-x-auto overflow-x-auto">
+<table class="min-w-full divide-y divide-gray-200">
+<thead class="bg-gray-50">
+<tr>
+<th class="px-6 py-3 text-left text-[clamp(0.75rem,1vw,0.875rem)] font-medium text-gray-500 uppercase tracking-wider" scope="col">
+                                    Product
+                                </th>
+<th class="px-6 py-3 text-left text-[clamp(0.75rem,1vw,0.875rem)] font-medium text-gray-500 uppercase tracking-wider" scope="col">
+                                    Sold
+                                </th>
+<th class="px-6 py-3 text-left text-[clamp(0.75rem,1vw,0.875rem)] font-medium text-gray-500 uppercase tracking-wider" scope="col">
+                                    Revenue
+                                </th>
+<th class="px-6 py-3 text-left text-[clamp(0.75rem,1vw,0.875rem)] font-medium text-gray-500 uppercase tracking-wider" scope="col">
+                                    Stock Status
+                                </th>
+</tr>
+</thead>
+<tbody class="bg-white divide-y divide-gray-200">
+<!-- Top Product 1 -->
+<tr>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="flex items-center">
+<div class="flex-shrink-0 h-10 w-10">
+<img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+</div>
+<div class="ml-4">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">Organic Bananas</div>
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#BAN-7821</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">248</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">$171.12</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        In Stock (42)
+                                    </span>
+</td>
+</tr>
+<!-- Top Product 2 -->
+<tr>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="flex items-center">
+<div class="flex-shrink-0 h-10 w-10">
+<img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+</div>
+<div class="ml-4">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">Greek Yogurt</div>
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#YOG-4532</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">187</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">$241.23</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        In Stock (15)
+                                    </span>
+</td>
+</tr>
+<!-- Top Product 3 -->
+<tr>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="flex items-center">
+<div class="flex-shrink-0 h-10 w-10">
+<img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+</div>
+<div class="ml-4">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">Whole Wheat Bread</div>
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#BRD-3345</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">156</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">$544.44</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full status-low">
+                                        Low Stock (3)
+                                    </span>
+</td>
+</tr>
+<!-- Top Product 4 -->
+<tr>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="flex items-center">
+<div class="flex-shrink-0 h-10 w-10">
+<img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+</div>
+<div class="ml-4">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">Organic Apples</div>
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#APL-8921</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">132</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">$394.68</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+<span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        In Stock (28)
+                                    </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+<button class="inline-flex items-center px-4 py-2 border border-transparent text-[clamp(0.875rem,1.2vw,1rem)] font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full mb-2 md:w-auto">
+                        View Sales Report
+                    </button>
+</div>
+</div>
+</div>
+</div><div class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24" id="inventory-page">
+<div class="flex justify-between items-center mb-8">
+<h1 class="text-[clamp(1.5rem,3vw,1.875rem)] font-bold text-gray-900">Inventory Management</h1>
+<div class="flex space-x-4">
+<button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-gray-300 w-full mb-2 md:w-auto" id="export-btn">
+<i class="fas fa-file-export mr-2"></i> Export
+                </button>
+<button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-gray-300 w-full mb-2 md:w-auto" id="print-btn">
+<i class="fas fa-print mr-2"></i> Print
+                </button>
+</div>
+</div>
+<!-- Tabs -->
+<div class="tab-buttons">
+<button class="tab-button active w-full mb-2 md:w-auto" data-tab="inventory-tab">Your Inventory</button>
+<button class="tab-button w-full mb-2 md:w-auto" data-tab="scan-tab">Scan Items</button>
+<button class="tab-button w-full mb-2 md:w-auto" data-tab="manual-tab">Add Manually</button>
+</div>
+<!-- Inventory Tab -->
+<div class="tab active" id="inventory-tab">
+<div class="bg-white shadow rounded-lg overflow-hidden">
+<div class="overflow-x-auto overflow-x-auto">
+<table class="inventory-table">
+<thead>
+<tr>
+<th class="text-sm whitespace-nowrap">Product</th>
+<th class="text-sm whitespace-nowrap">Price</th>
+<th class="text-sm whitespace-nowrap">Quantity</th>
+<th class="text-sm whitespace-nowrap">Barcode</th>
+<th class="text-sm whitespace-nowrap">Actions</th>
+</tr>
+</thead>
+<tbody id="inventory-list">
+<!-- Inventory items will be added here dynamically -->
+<tr><td class="py-10" colspan="5"></td><td class="px-2 py-2 text-sm text-gray-700 text-center">—</td><td class="px-2 py-2 text-sm text-gray-700 text-center">—</td><td class="px-2 py-2 text-sm text-gray-700 text-center">5</td><td class="px-2 py-2 text-sm text-gray-700 text-center">100</td></tr></tbody>
+</table>
+</div>
+<div class="text-center py-12 text-gray-500" id="empty-inventory">
+<i class="fas fa-box-open text-4xl mb-2 text-gray-300"></i>
+<p class="text-[clamp(1.125rem,2vw,1.25rem)]">Your inventory is empty</p>
+<p class="text-[clamp(0.875rem,1.2vw,1rem)] mt-2">Scan or add items to get started</p>
+</div>
+</div>
+<div class="text-center mt-4 mb-24 text-sm text-gray-500" id="inventory-pagination">Page 1 of 1</div></div>
+<!-- Scan Tab -->
+<div class="tab" id="scan-tab">
+<div class="bg-white shadow rounded-lg p-6">
+<div id="scanner-container">
+<div id="scanner-viewfinder">
+<div class="scan-line"></div>
+</div>
+<p class="text-gray-500">Point your camera at a barcode or QR code</p>
+</div>
+<div class="flex justify-center mb-6">
+<button class="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 flex items-center w-full mb-2 md:w-auto" id="scan-btn">
+<i class="fas fa-camera mr-2"></i> Start Scanning
+                    </button>
+</div>
+<div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+<div class="flex">
+<div class="flex-shrink-0">
+<i class="fas fa-info-circle text-blue-400"></i>
+</div>
+<div class="ml-3">
+<p class="text-[clamp(0.875rem,1.2vw,1rem)] text-blue-700">
+                                For demonstration purposes, click "Simulate Scan" to add sample products to your inventory.
+                            </p>
+</div>
+</div>
+</div>
+<div class="flex justify-center space-x-4">
+<button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-gray-300 w-full mb-2 md:w-auto" id="simulate-scan">
+                        Simulate Scan
+                    </button>
+<button class="bg-red-100 text-red-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-red-200 hidden w-full mb-2 md:w-auto" id="stop-scan">
+                        Stop Scanning
+                    </button>
+</div>
+</div>
+</div>
+<!-- Manual Add Tab -->
+<div class="tab" id="manual-tab">
+<div class="bg-white shadow rounded-lg p-6">
+<h3 class="text-[clamp(1.125rem,2vw,1.25rem)] font-semibold mb-4">Add Product Manually</h3>
+<form class="space-y-4" id="manual-add-form">
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="product-name">Product Name</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="product-name" required="" type="text"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="product-price">Price ($)</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="product-price" min="0" required="" step="0.01" type="number"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="product-quantity">Quantity</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="product-quantity" min="0" required="" type="number" value="1"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="product-barcode">Barcode (optional)</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="product-barcode" type="text"/>
+</div>
+<button class="w-full bg-indigo-600 text-white py-2 px-4 border border-transparent rounded-md shadow-sm text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full mb-2 md:w-auto" type="submit">
+                        Add to Inventory
+                    </button>
+
+<div>
+  <label for="product-min" class="block text-sm font-medium text-gray-700">Min Quantity</label>
+  <input type="number" id="product-min" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
+</div>
+<div>
+  <label for="product-max" class="block text-sm font-medium text-gray-700">Max Quantity</label>
+  <input type="number" id="product-max" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
+</div>
+</form>
+</div>
+</div>
+<!-- Product Details Form (for scanned items) -->
+<div class="hidden bg-white shadow rounded-lg p-6 mt-6" id="product-details-form">
+<h3 class="text-[clamp(1.125rem,2vw,1.25rem)] font-semibold mb-4">Add Scanned Product</h3>
+<form class="space-y-4" id="scanned-product-form">
+<input id="scanned-barcode" type="hidden"/>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="scanned-product-name">Product Name</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="scanned-product-name" required="" type="text"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="scanned-product-price">Price ($)</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="scanned-product-price" min="0" required="" step="0.01" type="number"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="scanned-product-quantity">Quantity</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="scanned-product-quantity" min="0" required="" type="number" value="1"/>
+</div>
+<div class="flex justify-end space-x-3">
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="scanned-product-min">Min Quantity</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" id="scanned-product-min" type="number" />
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="scanned-product-max">Max Quantity</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" id="scanned-product-max" type="number" />
+</div>
+
+<button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-gray-300 w-full mb-2 md:w-auto" id="cancel-product-btn" type="button">
+                        Cancel
+                    </button>
+<button class="bg-indigo-600 text-white px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-indigo-700 w-full mb-2 md:w-auto" id="save-product-btn" type="submit">
+                        Add to Inventory
+                    </button>
+</div>
+</form>
+</div>
+<!-- Edit Product Form -->
+<div class="hidden bg-white shadow rounded-lg p-6 mt-6" id="edit-product-form">
+<h3 class="text-[clamp(1.125rem,2vw,1.25rem)] font-semibold mb-4">Edit Product</h3>
+<form class="space-y-4" id="edit-form">
+<input id="edit-product-id" type="hidden"/>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="edit-product-name">Product Name</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="edit-product-name" required="" type="text"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="edit-product-price">Price ($)</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="edit-product-price" min="0" required="" step="0.01" type="number"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="edit-product-quantity">Quantity</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="edit-product-quantity" min="0" required="" type="number"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="edit-product-barcode">Barcode</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="edit-product-barcode" type="text"/>
+</div>
+<div class="flex justify-end space-x-3">
+<button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-gray-300 w-full mb-2 md:w-auto" id="cancel-edit-btn" type="button">
+                        Cancel
+                    </button>
+<button class="bg-indigo-600 text-white px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-indigo-700 w-full mb-2 md:w-auto" id="save-edit-btn" type="submit">
+                        Save Changes
+                    </button>
+</div>
+
+<div>
+  <label for="edit-product-min" class="block text-sm font-medium text-gray-700">Min Quantity</label>
+  <input type="number" id="edit-product-min" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
+</div>
+<div>
+  <label for="edit-product-max" class="block text-sm font-medium text-gray-700">Max Quantity</label>
+  <input type="number" id="edit-product-max" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
+</div>
+</form>
+</div>
+</div>
+<!-- Dashboard Page -->
+<!-- Sales Page -->
+<div class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24" id="sales-page">
+<div class="flex justify-between items-center mb-8">
+<h1 class="text-[clamp(1.5rem,3vw,1.875rem)] font-bold text-gray-900">Sales</h1>
+<div class="flex space-x-4">
+<button class="bg-indigo-600 text-white px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-indigo-700 w-full mb-2 md:w-auto" id="manual-entry-btn">
+<i class="fas fa-keyboard mr-2"></i> Manual Entry
+                </button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Scanner Section -->
+<div class="lg:col-span-2">
+<div class="bg-white shadow rounded-lg p-6">
+<h2 class="text-[clamp(1.125rem,2vw,1.25rem)] font-semibold mb-4">Scan Products</h2>
+<div id="scanner-container">
+<div id="scanner-viewfinder">
+<div class="scan-line"></div>
+</div>
+<p class="text-gray-500">Point your camera at a barcode or QR code</p>
+</div>
+<div class="flex justify-center mb-6">
+<button class="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 flex items-center w-full mb-2 md:w-auto" id="sales-scan-btn">
+<i class="fas fa-camera mr-2"></i> Start Scanning
+                        </button>
+</div>
+<div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+<div class="flex">
+<div class="flex-shrink-0">
+<i class="fas fa-info-circle text-blue-400"></i>
+</div>
+<div class="ml-3">
+<p class="text-[clamp(0.875rem,1.2vw,1rem)] text-blue-700">
+                                    For demonstration purposes, click "Simulate Scan" to add sample products to your cart.
+                                </p>
+</div>
+</div>
+</div>
+<div class="flex justify-center space-x-4">
+<button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-gray-300 w-full mb-2 md:w-auto" id="sales-simulate-scan">
+                            Simulate Scan
+                        </button>
+<button class="bg-red-100 text-red-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-red-200 hidden w-full mb-2 md:w-auto" id="sales-stop-scan">
+                            Stop Scanning
+                        </button>
+<button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-gray-300 w-full mb-2 md:w-auto" id="sales-manual-input-btn">
+<i class="fas fa-barcode mr-1"></i> Enter Barcode
+                        </button>
+</div>
+</div>
+</div>
+<!-- Cart Section -->
+<div>
+<div class="bg-white shadow rounded-lg p-6">
+<h2 class="text-[clamp(1.125rem,2vw,1.25rem)] font-semibold mb-4">Shopping Cart</h2>
+<div class="mb-4" id="cart-items">
+<div class="text-center py-8 text-gray-500" id="empty-cart">
+<i class="fas fa-shopping-cart text-4xl mb-2 text-gray-300"></i>
+<p class="text-[clamp(1.125rem,2vw,1.25rem)]">Your cart is empty</p>
+<p class="text-[clamp(0.875rem,1.2vw,1rem)] mt-2">Scan or add items to get started</p>
+</div>
+</div>
+<div class="border-t border-gray-200 pt-4 hidden" id="cart-summary">
+<div class="flex justify-between mb-2">
+<span class="font-medium">Subtotal:</span>
+<span id="subtotal">$0.00</span>
+</div>
+<div class="flex justify-between mb-2">
+<span class="font-medium">Tax (10%):</span>
+<span id="tax">$0.00</span>
+</div>
+<div class="flex justify-between text-[clamp(1.125rem,2vw,1.25rem)] font-bold">
+<span>Total:</span>
+<span id="total">$0.00</span>
+</div>
+<button class="w-full bg-green-600 text-white py-3 px-4 rounded-md font-medium hover:bg-green-700 mt-6 w-full mb-2 md:w-auto" id="checkout-btn">
+<i class="fas fa-receipt mr-2"></i> Generate Receipt
+                        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Manual Entry Modal -->
+<div class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50" id="manual-entry-modal">
+<div class="bg-white rounded-lg p-6 w-full max-w-md">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-[clamp(1.125rem,2vw,1.25rem)] font-semibold">Manual Product Entry</h3>
+<button class="text-gray-500 hover:text-gray-700 w-full mb-2 md:w-auto" id="close-manual-modal">
+<i class="fas fa-times"></i>
+</button>
+</div>
+<div class="space-y-4">
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="manual-barcode">Barcode</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="manual-barcode" placeholder="Enter barcode" type="text"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="manual-product-name">Product Name</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="manual-product-name" placeholder="Enter product name" type="text"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="manual-product-price">Price ($)</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="manual-product-price" min="0" placeholder="0.00" step="0.01" type="number"/>
+</div>
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="manual-product-quantity">Quantity</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="manual-product-quantity" min="1" type="number" value="1"/>
+</div>
+<div class="flex justify-end space-x-3">
+<button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-gray-300 w-full mb-2 md:w-auto" id="cancel-manual-entry">
+                            Cancel
+                        </button>
+<button class="bg-indigo-600 text-white px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-indigo-700 w-full mb-2 md:w-auto" id="add-manual-item">
+                            Add to Cart
+                        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Barcode Input Modal -->
+<div class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50" id="barcode-input-modal">
+<div class="bg-white rounded-lg p-6 w-full max-w-md">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-[clamp(1.125rem,2vw,1.25rem)] font-semibold">Enter Barcode</h3>
+<button class="text-gray-500 hover:text-gray-700 w-full mb-2 md:w-auto" id="close-barcode-modal">
+<i class="fas fa-times"></i>
+</button>
+</div>
+<div class="space-y-4">
+<div>
+<label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700" for="barcode-input">Barcode</label>
+<input autofocus="" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" id="barcode-input" placeholder="Scan or enter barcode" type="text"/>
+</div>
+<div class="flex justify-end space-x-3">
+<button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-gray-300 w-full mb-2 md:w-auto" id="cancel-barcode-input">
+                            Cancel
+                        </button>
+<button class="bg-indigo-600 text-white px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-indigo-700 w-full mb-2 md:w-auto" id="submit-barcode">
+                            Submit
+                        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Receipt Modal -->
+<div class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50" id="receipt-modal">
+<div class="bg-white rounded-lg p-6 w-full max-w-md">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-[clamp(1.125rem,2vw,1.25rem)] font-semibold">Receipt</h3>
+<button class="text-gray-500 hover:text-gray-700 w-full mb-2 md:w-auto" id="close-receipt-modal">
+<i class="fas fa-times"></i>
+</button>
+</div>
+<div id="receipt-container">
+<div class="text-center mb-4">
+<h2 class="text-[clamp(1.25rem,2.5vw,1.5rem)] font-bold">ScanSell</h2>
+<p class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">123 Main St, City</p>
+<p class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">Tel: (123) 456-7890</p>
+</div>
+<div class="border-t border-b border-gray-200 py-2 my-2">
+<p class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">Date: <span id="receipt-date"></span></p>
+<p class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">Transaction #: <span id="receipt-id"></span></p>
+</div>
+<div class="mb-4" id="receipt-items">
+<!-- Receipt items will be added here -->
+</div>
+<div class="border-t border-gray-200 pt-2">
+<div class="flex justify-between">
+<span class="font-medium">Subtotal:</span>
+<span id="receipt-subtotal">$0.00</span>
+</div>
+<div class="flex justify-between">
+<span class="font-medium">Tax (10%):</span>
+<span id="receipt-tax">$0.00</span>
+</div>
+<div class="flex justify-between font-bold">
+<span>Total:</span>
+<span id="receipt-total">$0.00</span>
+</div>
+</div>
+<div class="mt-6 text-center">
+<div id="qr-code-container"></div>
+<p class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-700 mt-2">Ask the client to scan this QR code to view and pay.</p>
+</div>
+</div>
+<div class="mt-6 text-center">
+<button class="bg-indigo-600 text-white px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-indigo-700 mr-2 w-full mb-2 md:w-auto" id="print-receipt">
+<i class="fas fa-print mr-1"></i> Print
+                    </button>
+<button class="bg-green-600 text-white px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-green-700 w-full mb-2 md:w-auto" id="new-sale">
+<i class="fas fa-cash-register mr-1"></i> New Sale
+                    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Notification -->
+<div class="notification" id="notification">
+<i class="fas fa-check-circle mr-2"></i>
+<span id="notification-message"></span>
+</div>
+<script>
+        // Inventory data
+        let inventory = [{'id': 1, 'name': 'Organic Bananas', 'price': 9.65, 'quantity': 0, 'barcode': '100000001', 'min': 5, 'max': 75}, {'id': 2, 'name': 'Greek Yogurt', 'price': 1.93, 'quantity': 10, 'barcode': '100000002', 'min': 3, 'max': 75}, {'id': 3, 'name': 'Whole Wheat Bread', 'price': 6.05, 'quantity': 8, 'barcode': '100000003', 'min': 7, 'max': 25}, {'id': 4, 'name': 'Free Range Eggs', 'price': 3.88, 'quantity': 0, 'barcode': '100000004', 'min': 3, 'max': 75}, {'id': 5, 'name': 'Almond Milk', 'price': 5.45, 'quantity': 0, 'barcode': '100000005', 'min': 3, 'max': 25}, {'id': 6, 'name': 'Organic Spinach', 'price': 3.19, 'quantity': 0, 'barcode': '100000006', 'min': 7, 'max': 25}, {'id': 7, 'name': 'Grass-Fed Beef', 'price': 9.36, 'quantity': 6, 'barcode': '100000007', 'min': 7, 'max': 25}, {'id': 8, 'name': 'Whole Wheat Pasta', 'price': 4.71, 'quantity': 8, 'barcode': '100000008', 'min': 5, 'max': 25}, {'id': 9, 'name': 'Extra Virgin Olive Oil', 'price': 8.69, 'quantity': 20, 'barcode': '100000009', 'min': 3, 'max': 25}, {'id': 10, 'name': 'Organic Apples', 'price': 6.6, 'quantity': 15, 'barcode': '100000010', 'min': 3, 'max': 50}, {'id': 11, 'name': 'Granola Bars', 'price': 7.56, 'quantity': 4, 'barcode': '100000011', 'min': 3, 'max': 50}, {'id': 12, 'name': 'Quinoa', 'price': 3.15, 'quantity': 10, 'barcode': '100000012', 'min': 7, 'max': 75}, {'id': 13, 'name': 'Avocados', 'price': 1.77, 'quantity': 30, 'barcode': '100000013', 'min': 3, 'max': 25}, {'id': 14, 'name': 'Oat Milk', 'price': 7.24, 'quantity': 6, 'barcode': '100000014', 'min': 5, 'max': 75}, {'id': 15, 'name': 'Coconut Water', 'price': 8.53, 'quantity': 4, 'barcode': '100000015', 'min': 3, 'max': 25}, {'id': 16, 'name': 'Brown Rice', 'price': 3.72, 'quantity': 2, 'barcode': '100000016', 'min': 7, 'max': 50}, {'id': 17, 'name': 'Black Beans', 'price': 3.57, 'quantity': 10, 'barcode': '100000017', 'min': 5, 'max': 75}, {'id': 18, 'name': 'Honey', 'price': 9.8, 'quantity': 4, 'barcode': '100000018', 'min': 3, 'max': 25}, {'id': 19, 'name': 'Maple Syrup', 'price': 5.0, 'quantity': 0, 'barcode': '100000019', 'min': 5, 'max': 25}, {'id': 20, 'name': 'Tomato Sauce', 'price': 2.06, 'quantity': 10, 'barcode': '100000020', 'min': 5, 'max': 75}];
+
+// Sample products for simulation
+        const sampleProducts = [
+            { id: 1, name: "Organic Apples", price: 2.99, quantity: 50, barcode: "123456789" , min: 5, max: 50 },
+            { id: 2, name: "Whole Grain Bread", price: 3.49, quantity: 30, barcode: "987654321" , min: 5, max: 50 },
+            { id: 3, name: "Free Range Eggs (Dozen)", price: 4.99, quantity: 25, barcode: "456789123" , min: 5, max: 50 },
+            { id: 4, name: "Almond Milk", price: 3.79, quantity: 20, barcode: "321654987" , min: 5, max: 50 },
+            { id: 5, name: "Organic Spinach", price: 2.49, quantity: 15, barcode: "789123456" , min: 5, max: 50 },
+            { id: 6, name: "Grass-Fed Beef (1lb)", price: 8.99, quantity: 10, barcode: "654987321" , min: 5, max: 50 },
+            { id: 7, name: "Organic Bananas", price: 0.69, quantity: 40, barcode: "147258369" , min: 5, max: 50 },
+            { id: 8, name: "Greek Yogurt", price: 1.29, quantity: 30, barcode: "369258147" , min: 5, max: 50 },
+            { id: 9, name: "Whole Wheat Pasta", price: 2.19, quantity: 25, barcode: "258147369" , min: 5, max: 50 },
+            { id: 10, name: "Extra Virgin Olive Oil", price: 7.99, quantity: 15, barcode: "951753852" , min: 5, max: 50 }
+        ];
+
+        // Shopping cart
+        let cart = [];
+        let receiptData = null;
+
+        // DOM elements
+        const inventoryNav = document.getElementById('inventory-nav');
+        const salesNav = document.getElementById('sales-nav');
+        const inventoryPage = document.getElementById('inventory-page');
+        const salesPage = document.getElementById('sales-page');
+        
+        // Inventory elements
+        const scanBtn = document.getElementById('scan-btn');
+        const stopScanBtn = document.getElementById('stop-scan');
+        const simulateScanBtn = document.getElementById('simulate-scan');
+        const inventoryList = document.getElementById('inventory-list');
+        const emptyInventory = document.getElementById('empty-inventory');
+        const manualAddForm = document.getElementById('manual-add-form');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabs = document.querySelectorAll('.tab');
+        
+        // Product details form elements
+        const productDetailsForm = document.getElementById('product-details-form');
+        const scannedProductForm = document.getElementById('scanned-product-form');
+        const cancelProductBtn = document.getElementById('cancel-product-btn');
+        const saveProductBtn = document.getElementById('save-product-btn');
+        
+        // Edit form elements
+        const editForm = document.getElementById('edit-product-form');
+        const editFormElement = document.getElementById('edit-form');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const saveEditBtn = document.getElementById('save-edit-btn');
+        
+        // Sales elements
+        const salesScanBtn = document.getElementById('sales-scan-btn');
+        const salesStopScanBtn = document.getElementById('sales-stop-scan');
+        const salesSimulateScanBtn = document.getElementById('sales-simulate-scan');
+        const salesManualInputBtn = document.getElementById('sales-manual-input-btn');
+        const cartItems = document.getElementById('cart-items');
+        const emptyCart = document.getElementById('empty-cart');
+        const cartSummary = document.getElementById('cart-summary');
+        const subtotalEl = document.getElementById('subtotal');
+        const taxEl = document.getElementById('tax');
+        const totalEl = document.getElementById('total');
+        const checkoutBtn = document.getElementById('checkout-btn');
+        const manualEntryBtn = document.getElementById('manual-entry-btn');
+        const closeManualModal = document.getElementById('close-manual-modal');
+        const cancelManualEntry = document.getElementById('cancel-manual-entry');
+        const addManualItem = document.getElementById('add-manual-item');
+        const barcodeInputModal = document.getElementById('barcode-input-modal');
+        const closeBarcodeModal = document.getElementById('close-barcode-modal');
+        const cancelBarcodeInput = document.getElementById('cancel-barcode-input');
+        const submitBarcode = document.getElementById('submit-barcode');
+        const barcodeInput = document.getElementById('barcode-input');
+        const receiptModal = document.getElementById('receipt-modal');
+        const closeReceiptModal = document.getElementById('close-receipt-modal');
+        const printReceiptBtn = document.getElementById('print-receipt');
+        const newSaleBtn = document.getElementById('new-sale');
+        const receiptItems = document.getElementById('receipt-items');
+        const receiptSubtotal = document.getElementById('receipt-subtotal');
+        const receiptTax = document.getElementById('receipt-tax');
+        const receiptTotal = document.getElementById('receipt-total');
+        const receiptDate = document.getElementById('receipt-date');
+        const receiptId = document.getElementById('receipt-id');
+        const qrCodeContainer = document.getElementById('qr-code-container');
+        
+        // Notification elements
+        const notification = document.getElementById('notification');
+        const notificationMessage = document.getElementById('notification-message');
+
+        // Navigation
+        const dashboardNav = document.getElementById('dashboard-nav');
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`${page}-page`).classList.add('active');
+            
+            // Update active nav link
+            document.querySelectorAll('#inventory-nav, #sales-nav, #dashboard-nav').forEach(nav => {
+                nav.classList.remove('text-indigo-600', 'border-indigo-600');
+                nav.classList.add('text-gray-500', 'border-transparent');
+            });
+            
+            document.getElementById(`${page}-nav`).classList.remove('text-gray-500', 'border-transparent');
+            document.getElementById(`${page}-nav`).classList.add('text-indigo-600', 'border-indigo-600');
+        }
+
+        inventoryNav.addEventListener('click', function(e) {
+            e.preventDefault();
+            showPage('inventory');
+        });
+
+        dashboardNav.addEventListener('click', function(e) {
+            e.preventDefault();
+            showPage('dashboard'); renderLowStockAlerts();
+        });
+
+        salesNav.addEventListener('click', function(e) {
+            e.preventDefault();
+            showPage('sales');
+        });
+
+        // Show notification
+        function showNotification(message) {
+            notificationMessage.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        
+function updateTotalItemsCount() {
+    const totalItemsCount = document.getElementById('total-items-count');
+    if (totalItemsCount) {
+        const total = inventory.reduce((sum, item) => sum + item.quantity, 0);
+        totalItemsCount.textContent = total;
+    }
+}
+
+
+        
+
+function updateLowStockCount() {
+    const lowStockCount = inventory.filter(item =>
+        item.min !== null && !isNaN(item.min) && item.quantity < item.min
+    ).length;
+
+    const lowStockElement = document.getElementById('low-stock-count');
+    if (lowStockElement) {
+        lowStockElement.textContent = lowStockCount;
+    }
+
+
+function updateOutOfStockCount() {
+    const outOfStockCount = inventory.filter(item => item.quantity === 0).length;
+
+    const outOfStockElement = document.getElementById('out-of-stock-count');
+    if (outOfStockElement) {
+        outOfStockElement.textContent = outOfStockCount;
+    }
+}
+
+}
+
+
+function updateInventoryValue() {
+    const inventoryValue = document.getElementById('inventory-value');
+    if (inventoryValue) {
+        const totalValue = inventory.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        inventoryValue.textContent = `$${totalValue.toFixed(2)}`;
+    }
+}
+
+
+        // INVENTORY FUNCTIONS //
+
+        // Tab switching
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                
+                // Update active tab button
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update active tab content
+                tabs.forEach(tab => tab.classList.remove('active'));
+                document.getElementById(tabId).classList.add('active');
+                
+                // Hide forms when switching tabs
+                productDetailsForm.classList.add('hidden');
+                editForm.classList.add('hidden');
+            });
+        });
+
+        // Simulate scan functionality
+        simulateScanBtn.addEventListener('click', function() {
+            // Show scanning animation
+            scanBtn.textContent = "Scanning...";
+            scanBtn.disabled = true;
+            simulateScanBtn.disabled = true;
+            
+            // Simulate scanning delay
+            setTimeout(() => {
+                // Randomly select a sample product
+                const randomProduct = sampleProducts[Math.floor(Math.random() * sampleProducts.length)];
+                
+                // Fill product details form
+                document.getElementById('scanned-barcode').value = randomProduct.barcode;
+                document.getElementById('scanned-product-name').value = randomProduct.name;
+                document.getElementById('scanned-product-price').value = randomProduct.price;
+                document.getElementById('scanned-product-quantity').value = 1;
+                
+                // Show product details form
+                productDetailsForm.classList.remove('hidden');
+                productDetailsForm.scrollIntoView({ behavior: 'smooth' });
+                
+                // Reset scanning UI
+                scanBtn.textContent = "Start Scanning";
+                scanBtn.disabled = false;
+                simulateScanBtn.disabled = false;
+            }, 2000);
+        });
+
+        // Save scanned product
+        scannedProductForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('scanned-product-name').value;
+            const price = parseFloat(document.getElementById('scanned-product-price').value);
+            const quantity = parseInt(document.getElementById('scanned-product-quantity').value);
+            const barcode = document.getElementById('scanned-barcode').value;
+    const min = parseInt(document.getElementById('scanned-product-min').value);
+    const max = parseInt(document.getElementById('scanned-product-max').value);
+            
+            if (name && !isNaN(price) && !isNaN(quantity)) {
+                const newProduct = {
+                    id: Date.now(),
+                    name: name,
+                    price: price,
+                    quantity: quantity,
+                    barcode: barcode || null,
+                    min: isNaN(min) ? null : min,
+                    max: isNaN(max) ? null : max,
+                        min: isNaN(min) ? null : min,
+                        max: isNaN(max) ? null : max,
+                    min: isNaN(min) ? null : min,
+                    max: isNaN(max) ? null : max
+                };
+                
+                inventory.push(newProduct);
+                showNotification(`Added ${name} to inventory`);
+                
+                // Hide form and reset
+                productDetailsForm.classList.add('hidden');
+                scannedProductForm.reset();
+                
+                // Update inventory display
+                updateInventoryDisplay(); updateTotalItemsCount(); updateInventoryValue(); updateLowStockCount(); updateOutOfStockCount();
+                
+                // Switch to inventory tab
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                document.querySelector('[data-tab="inventory-tab"]').classList.add('active');
+                tabs.forEach(tab => tab.classList.remove('active'));
+                document.getElementById('inventory-tab').classList.add('active');
+            }
+        });
+
+        // Cancel product form
+        cancelProductBtn.addEventListener('click', function() {
+            productDetailsForm.classList.add('hidden');
+            scannedProductForm.reset();
+        });
+
+        // Manual add form submission
+        manualAddForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('product-name').value;
+            const price = parseFloat(document.getElementById('product-price').value);
+            const quantity = parseInt(document.getElementById('product-quantity').value);
+            const barcode = document.getElementById('product-barcode').value;
+    const min = parseInt(document.getElementById('product-min').value);
+    const max = parseInt(document.getElementById('product-max').value);
+            
+            if (name && !isNaN(price) && !isNaN(quantity)) {
+                const newProduct = {
+                    id: Date.now(),
+                    name: name,
+                    price: price,
+                    quantity: quantity,
+                    barcode: barcode || null,
+                    min: isNaN(min) ? null : min,
+                    max: isNaN(max) ? null : max,
+                        min: isNaN(min) ? null : min,
+                        max: isNaN(max) ? null : max,
+                    min: isNaN(min) ? null : min,
+                    max: isNaN(max) ? null : max
+                };
+                
+                inventory.push(newProduct);
+                showNotification(`Added ${name} to inventory`);
+                
+                // Reset form
+                this.reset();
+                document.getElementById('product-quantity').value = 1;
+                
+                // Update inventory display
+                updateInventoryDisplay(); updateTotalItemsCount(); updateInventoryValue(); updateLowStockCount(); updateOutOfStockCount();
+                
+                // Switch to inventory tab
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                document.querySelector('[data-tab="inventory-tab"]').classList.add('active');
+                tabs.forEach(tab => tab.classList.remove('active'));
+                document.getElementById('inventory-tab').classList.add('active');
+            }
+        });
+
+        // Update inventory display
+        function updateInventoryDisplay() {
+            if (inventory.length === 0) {
+                inventoryList.innerHTML = '';
+                emptyInventory.style.display = 'block';
+            } else {
+                emptyInventory.style.display = 'none';
+                inventoryList.innerHTML = inventory.map(item => `
+                    <tr>
+                        <td class="font-medium">${item.name}</td>
+                        <td>$${item.price.toFixed(2)}</td>
+                        <td>${item.quantity}</td>
+                        <td>${item.barcode || 'N/A'}</td>
+                        <td>
+                            <button class="action-btn edit-btn" data-id="${item.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="action-btn delete-btn" data-id="${item.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                // Add event listeners to action buttons
+                document.querySelectorAll('.edit-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const itemId = parseInt(this.getAttribute('data-id'));
+                        const product = inventory.find(item => item.id === itemId);
+                        
+                        if (product) {
+                            // Fill edit form with product data
+                            document.getElementById('edit-product-id').value = product.id;
+                            document.getElementById('edit-product-name').value = product.name;
+                            document.getElementById('edit-product-price').value = product.price;
+                            document.getElementById('edit-product-quantity').value = product.quantity;
+                            document.getElementById('edit-product-barcode').value = product.barcode || '';
+                            document.getElementById('edit-product-min').value = product.min ?? '';
+                            document.getElementById('edit-product-max').value = product.max ?? '';
+                            
+                            // Show edit form
+                            editForm.classList.remove('hidden');
+                            editForm.scrollIntoView({ behavior: 'smooth' });
+                        }
+                    });
+                });
+                
+                document.querySelectorAll('.delete-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const itemId = parseInt(this.getAttribute('data-id'));
+                        inventory = inventory.filter(item => item.id !== itemId);
+                        updateInventoryDisplay(); updateTotalItemsCount(); updateInventoryValue(); updateLowStockCount(); updateOutOfStockCount();
+                        showNotification('Product removed from inventory');
+                    });
+                });
+            }
+        }
+
+        // Save edited product
+        editFormElement.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const id = parseInt(document.getElementById('edit-product-id').value);
+    const name = document.getElementById('edit-product-name').value;
+    const price = parseFloat(document.getElementById('edit-product-price').value);
+    const quantity = parseInt(document.getElementById('edit-product-quantity').value);
+    const barcode = document.getElementById('edit-product-barcode').value;
+    const min = parseInt(document.getElementById('edit-product-min').value);
+    const max = parseInt(document.getElementById('edit-product-max').value);
+    
+    if (name && !isNaN(price) && !isNaN(quantity)) {
+        const productIndex = inventory.findIndex(item => item.id === id);
+        
+        if (productIndex !== -1) {
+            inventory[productIndex] = {
+                ...inventory[productIndex],
+                name: name,
+                price: price,
+                quantity: quantity,
+                barcode: barcode || null,
+                min: isNaN(min) ? null : min,
+                max: isNaN(max) ? null : max
+            };
+            
+            showNotification(`Updated ${name}`);
+            if (typeof updateInventoryDisplay === 'function') updateInventoryDisplay();
+            updateTotalItemsCount(); 
+            updateInventoryValue(); 
+            updateLowStockCount(); 
+            updateOutOfStockCount();
+            
+            console.log("Hiding edit form now...");
+            editForm.classList.add('hidden');
+        }
+    }
+});
+
+        // Cancel edit form
+        cancelEditBtn.addEventListener('click', function() {
+            editForm.classList.add('hidden');
+        });
+
+        // SALES FUNCTIONS //
+
+        // Update cart display
+        function updateCartDisplay() {
+            if (cart.length === 0) {
+                emptyCart.style.display = 'block';
+                cartSummary.classList.add('hidden');
+                cartItems.innerHTML = '';
+            } else {
+                emptyCart.style.display = 'none';
+                cartSummary.classList.remove('hidden');
+                
+                // Generate cart items HTML
+                cartItems.innerHTML = cart.map(item => `
+                    <div class="cart-item flex justify-between items-center py-3 border-b border-gray-200">
+                        <div class="flex-1">
+                            <h3 class="font-medium">${item.name}</h3>
+                            <p class="text-sm text-gray-500">$${item.price.toFixed(2)}</p>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="number" min="1" value="${item.quantity}" 
+                                   class="quantity-input" 
+                                   data-id="${item.id}"
+                                   onchange="updateQuantity(${item.id}, this.value)">
+                            <button onclick="removeFromCart(${item.id})" class="ml-3 text-red-500 hover:text-red-700">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Calculate totals
+                const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                const tax = subtotal * 0.10; // 10% tax
+                const total = subtotal + tax;
+                
+                // Update totals display
+                subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
+                taxEl.textContent = `$${tax.toFixed(2)}`;
+                totalEl.textContent = `$${total.toFixed(2)}`;
+            }
+        }
+
+        // Update quantity of an item in the cart
+        function updateQuantity(id, newQuantity) {
+            const itemIndex = cart.findIndex(item => item.id === id);
+            if (itemIndex !== -1) {
+                cart[itemIndex].quantity = parseInt(newQuantity);
+                updateCartDisplay();
+            }
+        }
+
+        // Remove item from cart
+        function removeFromCart(id) {
+            cart = cart.filter(item => item.id !== id);
+            updateCartDisplay();
+            showNotification('Item removed from cart');
+        }
+
+        // Add item to cart
+        function addToCart(product, quantity = 1) {
+            const existingItem = cart.find(item => item.id === product.id);
+            
+            if (existingItem) {
+                existingItem.quantity += quantity;
+                showNotification(`Added ${quantity} more ${product.name} to cart`);
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    quantity: quantity
+                });
+                showNotification(`Added ${product.name} to cart`);
+            }
+            
+            updateCartDisplay();
+        }
+
+        // Find product by barcode
+        function findProductByBarcode(barcode) {
+            return inventory.find(item => item.barcode === barcode);
+        }
+
+        // Simulate scan functionality
+        salesSimulateScanBtn.addEventListener('click', function() {
+            // Show scanning animation
+            salesScanBtn.textContent = "Scanning...";
+            salesScanBtn.disabled = true;
+            salesSimulateScanBtn.disabled = true;
+            
+            // Simulate scanning delay
+            setTimeout(() => {
+                // Randomly select a sample product
+                const randomProduct = inventory.length > 0 ? 
+                    inventory[Math.floor(Math.random() * inventory.length)] : 
+                    sampleProducts[Math.floor(Math.random() * sampleProducts.length)];
+                
+                // Add to cart
+                addToCart(randomProduct);
+                
+                // Reset scanning UI
+                salesScanBtn.textContent = "Start Scanning";
+                salesScanBtn.disabled = false;
+                salesSimulateScanBtn.disabled = false;
+            }, 1500);
+        });
+
+        // Manual entry modal
+        manualEntryBtn.addEventListener('click', function() {
+            document.getElementById('manual-entry-modal').classList.remove('hidden');
+        });
+
+        closeManualModal.addEventListener('click', function() {
+            document.getElementById('manual-entry-modal').classList.add('hidden');
+        });
+
+        cancelManualEntry.addEventListener('click', function() {
+            document.getElementById('manual-entry-modal').classList.add('hidden');
+        });
+
+        // Add manual item to cart
+        addManualItem.addEventListener('click', function() {
+            const barcode = document.getElementById('manual-barcode').value;
+            const name = document.getElementById('manual-product-name').value;
+            const price = parseFloat(document.getElementById('manual-product-price').value);
+            const quantity = parseInt(document.getElementById('manual-product-quantity').value);
+            
+            if (name && !isNaN(price) && !isNaN(quantity)) {
+                const newProduct = {
+                    id: barcode || Date.now(), // Use barcode as ID if available, otherwise generate one
+                    name: name,
+                    price: price,
+                    quantity: quantity
+                };
+                
+                addToCart(newProduct, quantity);
+                document.getElementById('manual-entry-modal').classList.add('hidden');
+                
+                // Reset form
+                document.getElementById('manual-barcode').value = '';
+                document.getElementById('manual-product-name').value = '';
+                document.getElementById('manual-product-price').value = '';
+                document.getElementById('manual-product-quantity').value = 1;
+            } else {
+                showNotification('Please fill in all required fields');
+            }
+        });
+
+        // Barcode input modal
+        salesManualInputBtn.addEventListener('click', function() {
+            barcodeInputModal.classList.remove('hidden');
+            barcodeInput.focus();
+        });
+
+        closeBarcodeModal.addEventListener('click', function() {
+            barcodeInputModal.classList.add('hidden');
+            barcodeInput.value = '';
+        });
+
+        cancelBarcodeInput.addEventListener('click', function() {
+            barcodeInputModal.classList.add('hidden');
+            barcodeInput.value = '';
+        });
+
+        submitBarcode.addEventListener('click', function() {
+            const barcode = barcodeInput.value.trim();
+            if (barcode) {
+                const product = findProductByBarcode(barcode);
+                if (product) {
+                    addToCart(product);
+                    barcodeInputModal.classList.add('hidden');
+                    barcodeInput.value = '';
+                } else {
+                    showNotification('Product not found in inventory');
+                }
+            }
+        });
+
+        // Handle Enter key in barcode input
+        barcodeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitBarcode.click();
+            }
+        });
+
+        // Generate receipt
+        checkoutBtn.addEventListener('click', function() {
+            if (cart.length === 0) {
+                showNotification('Your cart is empty');
+                return;
+            }
+            
+            // Calculate totals
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const tax = subtotal * 0.10; // 10% tax
+            const total = subtotal + tax;
+            
+            // Create receipt data
+            receiptData = {
+                id: 'SC-' + Date.now().toString().slice(-6),
+                date: new Date().toLocaleString(),
+                items: [...cart],
+                subtotal: subtotal,
+                tax: tax,
+                total: total
+            };
+            
+            // Display receipt
+            displayReceipt(receiptData);
+            
+            // Show receipt modal
+            receiptModal.classList.remove('hidden');
+        });
+
+        // Display receipt
+        function displayReceipt(receipt) {
+            // Set receipt header info
+            receiptDate.textContent = receipt.date;
+            receiptId.textContent = receipt.id;
+            
+            // Generate receipt items
+            receiptItems.innerHTML = receipt.items.map(item => `
+                <div class="flex justify-between py-1">
+                    <div>
+                        <span>${item.name}</span>
+                        <span class="text-sm text-gray-500"> x${item.quantity}</span>
+                    </div>
+                    <div>$${(item.price * item.quantity).toFixed(2)}</div>
+                </div>
+            `).join('');
+            
+            // Set totals
+            receiptSubtotal.textContent = `$${receipt.subtotal.toFixed(2)}`;
+            receiptTax.textContent = `$${receipt.tax.toFixed(2)}`;
+            receiptTotal.textContent = `$${receipt.total.toFixed(2)}`;
+            
+            // Generate QR code with receipt data
+            qrCodeContainer.innerHTML = '';
+            QRCode.toCanvas(qrCodeContainer, JSON.stringify(receipt), { width: 180 }, function(error) {
+                if (error) console.error(error);
+            });
+        }
+
+        // Close receipt modal
+        closeReceiptModal.addEventListener('click', function() {
+            receiptModal.classList.add('hidden');
+        });
+
+        // Print receipt
+        printReceiptBtn.addEventListener('click', function() {
+            window.print();
+        });
+
+        // Start new sale
+        newSaleBtn.addEventListener('click', function() {
+            // Clear cart
+            cart = [];
+            updateCartDisplay();
+            
+            // Close receipt modal
+            receiptModal.classList.add('hidden');
+            
+            showNotification('New sale started');
+        });
+
+        // Initialize the application
+        function init() {
+            // Show inventory page by default
+            showPage('inventory');
+            
+            // Initialize displays
+            updateInventoryDisplay(); updateTotalItemsCount(); updateInventoryValue(); updateLowStockCount(); updateOutOfStockCount();
+            updateCartDisplay();
+            
+            // Add some sample products to inventory for demo
+            inventory = [...sampleProducts];
+            updateInventoryDisplay(); updateTotalItemsCount(); updateInventoryValue(); updateLowStockCount(); updateOutOfStockCount();
+        }
+
+        // Start the app
+        init();
+    
+
+
+
+
+editFormElement.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const id = parseInt(document.getElementById('edit-product-id').value);
+    const name = document.getElementById('edit-product-name').value;
+    const price = parseFloat(document.getElementById('edit-product-price').value);
+    const quantity = parseInt(document.getElementById('edit-product-quantity').value);
+    const barcode = document.getElementById('edit-product-barcode').value;
+    const min = parseInt(document.getElementById('edit-product-min').value);
+    const max = parseInt(document.getElementById('edit-product-max').value);
+    
+    if (name && !isNaN(price) && !isNaN(quantity)) {
+        const productIndex = inventory.findIndex(item => item.id === id);
+        
+        if (productIndex !== -1) {
+            inventory[productIndex] = {
+                ...inventory[productIndex],
+                name: name,
+                price: price,
+                quantity: quantity,
+                barcode: barcode || null,
+                min: isNaN(min) ? null : min,
+                max: isNaN(max) ? null : max
+            };
+            
+            showNotification(`Updated ${name}`);
+            if (typeof updateInventoryDisplay === 'function') updateInventoryDisplay();
+            updateTotalItemsCount(); 
+            updateInventoryValue(); 
+            updateLowStockCount(); 
+            updateOutOfStockCount();
+            
+            console.log("Hiding edit form now...");
+            editForm.classList.add('hidden');
+        }
+    }
+});
+
+
+function updateOutOfStockCount() {
+    const outOfStockCount = inventory.filter(item => item.quantity === 0).length;
+    const outOfStockElement = document.getElementById('out-of-stock-count');
+    if (outOfStockElement) {
+        outOfStockElement.textContent = outOfStockCount;
+    }
+}
+
+
+function renderLowStockAlerts() {
+    const tbody = document.querySelector('#dashboard-page table tbody');
+    tbody.innerHTML = ''; // Clear existing rows
+
+    const alertItems = inventory.filter(item => {
+        return (item.min !== null && !isNaN(item.min) && item.quantity < item.min) || item.quantity === 0;
+    });
+
+    alertItems.forEach(item => {
+        const status = item.quantity === 0 ? 'Out of Stock' : 'Low';
+        const statusClass = item.quantity === 0 ? 'status-out' : 'status-low';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10">
+                        <img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">${item.name}</div>
+                        <div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#${item.barcode}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">${item.quantity}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full ${statusClass}">
+                    ${status}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">
+                <button class="text-indigo-600 hover:text-indigo-900 mr-3 w-full mb-2 md:w-auto">Reorder</button>
+                <button class="text-gray-600 hover:text-gray-900 w-full mb-2 md:w-auto">View</button>
+            </td>
+            <td class="px-2 py-2 text-sm text-gray-700 text-center">${item.min ?? '—'}</td>
+            <td class="px-2 py-2 text-sm text-gray-700 text-center">${item.max ?? '—'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+
+function init() {
+    showPage('dashboard'); // Show dashboard first
+    renderLowStockAlerts();
+    updateInventoryDisplay();
+    updateTotalItemsCount();
+    updateInventoryValue();
+    updateLowStockCount();
+    updateOutOfStockCount();
+    if (typeof updateCartDisplay === 'function') updateCartDisplay();
+}
+window.onload = init;
+
+</script>
+<!-- Mobile Bottom Navigation -->
+<!-- Enhanced Mobile Bottom Navigation with Central "+" Button -->
+<!-- Final Clean YouTube-style Bottom Navigation -->
+<!-- YouTube-style Bottom Navigation -->
+<!-- Updated YouTube-style Bottom Navigation with Settings -->
+<!-- Final Fixed Bottom Navigation with Center "+" Icon (non-floating) -->
+<div class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24" id="profile-page"><h1 class="text-xl font-semibold text-gray-700">Profile Page (Coming Soon)</h1></div>
+<!-- Final Responsive Bottom Navigation with Centered Circular "+" Button -->
+<div class="fixed bottom-0 inset-x-0 bg-white shadow-md md:hidden z-50 h-20">
+<div class="flex justify-between items-center h-full px-4 sm:px-6 text-[10px] sm:text-xs text-gray-500 w-full max-w-md mx-auto">
+
+    <!-- New Center Action Menu -->
+    <div class="absolute left-1/2 transform -translate-x-1/2 -translate-y-3 z-10">
+      <div class="action-menu" id="action-menu">
+        <button class="action-btn" onclick="navigateToScan()">
+          <i class="fas fa-box text-indigo-600"></i>
+        </button>
+        <button class="action-btn" onclick="navigateToSales()">
+          <i class="fas fa-shopping-cart text-indigo-600"></i>
+        </button>
+      </div>
+      <button class="bg-indigo-600 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg border-4 border-white" 
+              onclick="toggleActionMenu()">
+        <i class="fas fa-plus text-2xl"></i>
+      </button>
+    </div>
+    
+<!-- Left Nav -->
+<div class="flex space-x-6 items-center">
+<button class="flex flex-col items-center" id="dashboard-nav-mobile" onclick="showPage('dashboard')">
+<i class="fas fa-home text-lg sm:text-xl"></i>
+<span>Dashboard</span>
+</button>
+<button class="flex flex-col items-center" id="inventory-nav-mobile" onclick="showPage('inventory')">
+<i class="fas fa-boxes text-lg sm:text-xl"></i>
+<span>Inventory</span>
+</button>
+</div>
+<!-- Center Circle Button -->
+
+<!-- Right Nav -->
+<div class="flex space-x-6 items-center">
+<button class="flex flex-col items-center" id="history-nav-mobile" onclick="showPage('history')">
+<i class="fas fa-user text-lg sm:text-xl"></i>
+<span>History</span>
+</button>
+<button class="flex flex-col items-center" id="settings-nav-mobile" onclick="showPage('settings')" onclick="showPage('settings')">
+<i class="fas fa-cog text-lg sm:text-xl"></i>
+<span>Settings</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const ITEMS_PER_PAGE = 20;
+    let currentPage = 1;
+
+    function paginateInventory() {
+        const rows = document.querySelectorAll("#inventory-list tr");
+        const totalPages = Math.ceil(rows.length / ITEMS_PER_PAGE);
+        const pagination = document.getElementById("inventory-pagination");
+
+        // Update visibility
+        rows.forEach((row, index) => {
+            const start = (currentPage - 1) * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+            row.style.display = index >= start && index < end ? "" : "none";
+        });
+
+        // Update page number display
+        pagination.textContent = `Page ${currentPage} of ${totalPages}`;
+    }
+
+    function createPaginationControls() {
+        const pagination = document.getElementById("inventory-pagination");
+        const controlWrapper = document.createElement("div");
+        controlWrapper.className = "mt-2 flex justify-center space-x-4";
+
+        const prevBtn = document.createElement("button");
+        prevBtn.textContent = "Previous";
+        prevBtn.className = "px-3 py-1 bg-gray-200 rounded text-sm";
+        prevBtn.onclick = () => {
+            if (currentPage > 1) {
+                currentPage--;
+                paginateInventory();
+            }
+        };
+
+        const nextBtn = document.createElement("button");
+        nextBtn.textContent = "Next";
+        nextBtn.className = "px-3 py-1 bg-gray-200 rounded text-sm";
+        nextBtn.onclick = () => {
+            const rows = document.querySelectorAll("#inventory-list tr");
+            const totalPages = Math.ceil(rows.length / ITEMS_PER_PAGE);
+            if (currentPage < totalPages) {
+                currentPage++;
+                paginateInventory();
+            }
+        };
+
+        controlWrapper.appendChild(prevBtn);
+        controlWrapper.appendChild(nextBtn);
+        pagination.insertAdjacentElement("afterend", controlWrapper);
+    }
+
+    paginateInventory();
+    createPaginationControls();
+});
+
+editFormElement.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const id = parseInt(document.getElementById('edit-product-id').value);
+    const name = document.getElementById('edit-product-name').value;
+    const price = parseFloat(document.getElementById('edit-product-price').value);
+    const quantity = parseInt(document.getElementById('edit-product-quantity').value);
+    const barcode = document.getElementById('edit-product-barcode').value;
+    const min = parseInt(document.getElementById('edit-product-min').value);
+    const max = parseInt(document.getElementById('edit-product-max').value);
+    
+    if (name && !isNaN(price) && !isNaN(quantity)) {
+        const productIndex = inventory.findIndex(item => item.id === id);
+        
+        if (productIndex !== -1) {
+            inventory[productIndex] = {
+                ...inventory[productIndex],
+                name: name,
+                price: price,
+                quantity: quantity,
+                barcode: barcode || null,
+                min: isNaN(min) ? null : min,
+                max: isNaN(max) ? null : max
+            };
+            
+            showNotification(`Updated ${name}`);
+            if (typeof updateInventoryDisplay === 'function') updateInventoryDisplay();
+            updateTotalItemsCount(); 
+            updateInventoryValue(); 
+            updateLowStockCount(); 
+            updateOutOfStockCount();
+            
+            console.log("Hiding edit form now...");
+            editForm.classList.add('hidden');
+        }
+    }
+});
+
+
+function updateOutOfStockCount() {
+    const outOfStockCount = inventory.filter(item => item.quantity === 0).length;
+    const outOfStockElement = document.getElementById('out-of-stock-count');
+    if (outOfStockElement) {
+        outOfStockElement.textContent = outOfStockCount;
+    }
+}
+
+
+function renderLowStockAlerts() {
+    const tbody = document.querySelector('#dashboard-page table tbody');
+    tbody.innerHTML = ''; // Clear existing rows
+
+    const alertItems = inventory.filter(item => {
+        return (item.min !== null && !isNaN(item.min) && item.quantity < item.min) || item.quantity === 0;
+    });
+
+    alertItems.forEach(item => {
+        const status = item.quantity === 0 ? 'Out of Stock' : 'Low';
+        const statusClass = item.quantity === 0 ? 'status-out' : 'status-low';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10">
+                        <img alt="" class="h-10 w-10 rounded-full" src="https://via.placeholder.com/40"/>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-900">${item.name}</div>
+                        <div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">#${item.barcode}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <div class="text-[clamp(0.875rem,1.2vw,1rem)] text-gray-900">${item.quantity}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm whitespace-nowrap truncate">
+                <span class="px-2 inline-flex text-[clamp(0.75rem,1vw,0.875rem)] leading-5 font-semibold rounded-full ${statusClass}">
+                    ${status}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-[clamp(0.875rem,1.2vw,1rem)] text-gray-500">
+                <button class="text-indigo-600 hover:text-indigo-900 mr-3 w-full mb-2 md:w-auto">Reorder</button>
+                <button class="text-gray-600 hover:text-gray-900 w-full mb-2 md:w-auto">View</button>
+            </td>
+            <td class="px-2 py-2 text-sm text-gray-700 text-center">${item.min ?? '—'}</td>
+            <td class="px-2 py-2 text-sm text-gray-700 text-center">${item.max ?? '—'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+
+function init() {
+    showPage('dashboard'); // Show dashboard first
+    renderLowStockAlerts();
+    updateInventoryDisplay();
+    updateTotalItemsCount();
+    updateInventoryValue();
+    updateLowStockCount();
+    updateOutOfStockCount();
+    if (typeof updateCartDisplay === 'function') updateCartDisplay();
+}
+window.onload = init;
+
+</script>
+
+<!-- Settings Page -->
+
+  </div>
+  <div class="tab hidden" id="preferences-tab">
+    <div class="bg-white shadow rounded-lg p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700" for="currency">Currency</label>
+        <select class="mt-1 block w-full border-gray-300 rounded-md shadow-sm py-2 px-3" id="currency">
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+          <option value="GBP">£ GBP</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700" for="language">Language</label>
+        <select class="mt-1 block w-full border-gray-300 rounded-md shadow-sm py-2 px-3" id="language">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Page -->
+
+      </div>
+    </div>
+  </div>
+
+  <div class="tab hidden" id="preferences-tab">
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="currency">Currency</label>
+        <select class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 dark:text-white" 
+                id="currency">
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+          <option value="GBP">£ GBP</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="language">Language</label>
+        <select class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 dark:text-white" 
+                id="language">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Theme</label>
+        <div class="mt-2 flex items-center space-x-4">
+          <button class="theme-toggle px-4 py-2 rounded-md" data-theme="light">Light</button>
+          <button class="theme-toggle px-4 py-2 rounded-md" data-theme="dark">Dark</button>
+          <button class="theme-toggle px-4 py-2 rounded-md" data-theme="system">System</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Page -->
+
+      </div>
+    </div>
+  </div>
+
+  <div class="tab hidden" id="preferences-tab">
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="currency">Currency</label>
+        <select class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 dark:text-white" 
+                id="currency">
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+          <option value="GBP">£ GBP</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="language">Language</label>
+        <select class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 dark:text-white" 
+                id="language">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Theme</label>
+        <div class="mt-2 flex items-center space-x-4">
+          <button class="theme-toggle px-4 py-2 rounded-md" data-theme="light">Light</button>
+          <button class="theme-toggle px-4 py-2 rounded-md" data-theme="dark">Dark</button>
+          <button class="theme-toggle px-4 py-2 rounded-md" data-theme="system">System</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+    </div>
+
+    <!-- 
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="language">Language</label>
+          <select id="language" class="mt-1 block w-full rounded-md py-2 px-3 border dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Theme</label>
+          <div class="mt-2 flex items-center space-x-4">
+            <button class="theme-toggle px-4 py-2 rounded-md" data-theme="light">Light</button>
+            <button class="theme-toggle px-4 py-2 rounded-md" data-theme="dark">Dark</button>
+            <button class="theme-toggle px-4 py-2 rounded-md" data-theme="system">System</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Settings Page -->
+<div class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 hidden" id="settings-page">
+  <div class="flex justify-between items-center mb-8">
+    <h1 class="text-[clamp(1.5rem,3vw,1.875rem)] font-bold text-gray-900">System Settings</h1>
+  </div>
+
+  <div class="bg-white shadow rounded-lg">
+    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+      <h3 class="text-[clamp(1.125rem,2vw,1.25rem)] leading-6 font-medium text-gray-900">
+        <i class="fas fa-cog text-indigo-600 mr-2"></i>
+        Application Settings
+      </h3>
+    </div>
+
+    <div class="px-4 py-5 sm:p-6 space-y-6">
+      <!-- Store Information -->
+      <div class="border rounded-lg overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h4 class="text-[clamp(1rem,1.5vw,1.125rem)] font-medium text-gray-700">
+            <i class="fas fa-store mr-2 text-indigo-600"></i>
+            Store Information
+          </h4>
+        </div>
+        <div class="px-4 py-4 space-y-4">
+          <div>
+            <label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700 mb-2" for="store-name">
+              Store Name
+            </label>
+            <input id="store-name" type="text" 
+                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                   placeholder="Enter store name">
+          </div>
+          <div>
+            <label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700 mb-2" for="store-address">
+              Address
+            </label>
+            <textarea id="store-address" rows="3" 
+                      class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Enter store address"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preferences -->
+      <div class="border rounded-lg overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h4 class="text-[clamp(1rem,1.5vw,1.125rem)] font-medium text-gray-700">
+            <i class="fas fa-user-cog mr-2 text-indigo-600"></i>
+            User Preferences
+          </h4>
+        </div>
+        <div class="px-4 py-4 space-y-4">
+          <div>
+            <label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700 mb-2" for="currency">
+              Currency
+            </label>
+            <select id="currency" 
+                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+              <option value="USD">$ USD</option>
+              <option value="EUR">€ EUR</option>
+              <option value="GBP">£ GBP</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[clamp(0.875rem,1.2vw,1rem)] font-medium text-gray-700 mb-2" for="language">
+              Language
+            </label>
+            <select id="language" 
+                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="mt-6 flex justify-end space-x-3">
+        <button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-gray-300">
+          Cancel
+        </button>
+        <button class="bg-indigo-600 text-white px-4 py-2 rounded-md text-[clamp(0.875rem,1.2vw,1rem)] font-medium hover:bg-indigo-700">
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  function toggleActionMenu() {
+      const menu = document.getElementById('action-menu');
+      menu.classList.toggle('active');
+  }
+
+  function navigateToSales() {
+      showPage('sales');
+      toggleActionMenu();
+  }
+
+  function navigateToScan() {
+      showPage('inventory');
+      document.querySelector('[data-tab="scan-tab"]')?.click();
+      toggleActionMenu();
+  }
+
+  document.addEventListener('click', (e) => {
+      const menu = document.getElementById('action-menu');
+      const plusBtn = document.querySelector('[onclick="toggleActionMenu()"]');
+      if (!plusBtn.contains(e.target) && !menu.contains(e.target)) {
+          menu.classList.remove('active');
+      }
+  });
+</script>
+
+<script>
+    function toggleActionMenu() {
+        const menu = document.getElementById('action-menu');
+        menu.classList.toggle('active');
+    }
+
+    function navigateToSales() {
+        showPage('sales');
+        toggleActionMenu();
+    }
+
+    function navigateToScan() {
+        showPage('inventory');
+        // Activate scan tab
+        document.querySelector('[data-tab="scan-tab"]').click();
+        toggleActionMenu();
+    }
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('action-menu');
+        const plusBtn = document.querySelector('[onclick="toggleActionMenu()"]');
+        
+        if (!plusBtn.contains(e.target) && !menu.contains(e.target)) {
+            menu.classList.remove('active');
+        }
+    });
+</script>
+
+</body>
+
+
+<script>
+document.querySelectorAll("#settings-page .tab-button").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll("#settings-page .tab-button").forEach(btn => btn.classList.remove("active"));
+    document.querySelectorAll("#settings-page .tab").forEach(tab => tab.classList.add("hidden"));
+    button.classList.add("active");
+    const tabId = button.getAttribute("data-tab");
+    document.getElementById(tabId).classList.remove("hidden");
+  });
+});
+</script>
+
+
+<script>
+document.querySelectorAll("#settings-page .tab-button").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll("#settings-page .tab-button").forEach(btn => btn.classList.remove("active"));
+    document.querySelectorAll("#settings-page .tab").forEach(tab => tab.classList.add("hidden"));
+    button.classList.add("active");
+    const tabId = button.getAttribute("data-tab");
+    document.getElementById(tabId).classList.remove("hidden");
+  });
+});
+
+document.querySelectorAll('.theme-toggle').forEach(button => {
+  button.addEventListener('click', function() {
+    const theme = this.dataset.theme;
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    } else {
+      localStorage.removeItem('theme');
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  });
+});
+
+const savedTheme = localStorage.getItem('theme') || 'system';
+if (savedTheme === 'dark' || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  document.documentElement.classList.add('dark');
+}
+</script>
+
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const originalShowPage = window.showPage || function(page) {
+    document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
+    document.getElementById(`${page}-page`)?.classList.remove("hidden");
+  };
+
+  window.showPage = function(page) {
+    originalShowPage(page);
+    highlightActiveMobileNav(page);
+    if (page === "dashboard") renderLowStockAlerts?.();
+  };
+
+  // Load settings from localStorage
+  const storeName = localStorage.getItem("storeName");
+  const storeAddress = localStorage.getItem("storeAddress");
+  const storeContact = localStorage.getItem("storeContact");
+  if (storeName) document.getElementById("store-name").value = storeName;
+  if (storeAddress) document.getElementById("store-address").value = storeAddress;
+  if (storeContact) document.getElementById("store-contact").value = storeContact;
+
+  document.getElementById("store-name").addEventListener("input", e => {
+    localStorage.setItem("storeName", e.target.value);
+  });
+  document.getElementById("store-address").addEventListener("input", e => {
+    localStorage.setItem("storeAddress", e.target.value);
+  });
+  document.getElementById("store-contact").addEventListener("input", e => {
+    localStorage.setItem("storeContact", e.target.value);
+  });
+});
+</script>
+
+
+<script>
+document.querySelectorAll("#settings-page .tab-button").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll("#settings-page .tab-button").forEach(btn => btn.classList.remove("active"));
+    document.querySelectorAll("#settings-page .tab").forEach(tab => tab.classList.add("hidden"));
+    button.classList.add("active");
+    const tabId = button.getAttribute("data-tab");
+    document.getElementById(tabId).classList.remove("hidden");
+  });
+});
+
+document.querySelectorAll('.theme-toggle').forEach(button => {
+  button.addEventListener('click', function() {
+    const theme = this.dataset.theme;
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    } else {
+      localStorage.removeItem('theme');
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  });
+});
+
+const savedTheme = localStorage.getItem('theme') || 'system';
+if (savedTheme === 'dark' || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  document.documentElement.classList.add('dark');
+}
+</script>
+
+
+<script>
+document.querySelectorAll('.accordion-header').forEach(header => {
+  header.addEventListener('click', () => {
+    const body = header.nextElementSibling;
+    body.classList.toggle('hidden');
+  });
+});
+</script>
+
+</html>
